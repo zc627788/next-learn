@@ -1,24 +1,10 @@
-import {getFilteredEvents} from "../../dummy-data";
-import { useRouter } from "next/router";
+import { getFilteredEvents } from "../../helper/api-util";
 import EventList from "../../components/events/event-list";
 import ResultsTitle from "../../components/events/result-title";
 import ErrorAlert from "../../components/ui/error-alert";
 import Button from "../../components/ui/button";
-function FilteredEventsPage() {
-  const router = useRouter();
-  const params = router.query.slug;
-  if (!params) {
-    return <p className="center">loading...</p>;
-  }
-  const [year, month] = params;
-  if (
-    isNaN(year) ||
-    isNaN(month) ||
-    year > 2023 ||
-    year < 2021 ||
-    month < 1 ||
-    month > 12
-  ) {
+function FilteredEventsPage(props) {
+  if (props.hasError) {
     return (
       <>
         <ErrorAlert>
@@ -30,8 +16,7 @@ function FilteredEventsPage() {
       </>
     );
   }
-  const filterData =  getFilteredEvents({ year, month });
-  if (!filterData || filterData.length === 0) {
+  if (props.notData) {
     return (
       <>
         <ErrorAlert>
@@ -43,12 +28,39 @@ function FilteredEventsPage() {
       </>
     );
   }
-  const date = new Date(year, month - 1);
+  const date = new Date(props.year, props.month - 1);
   return (
     <div>
       <ResultsTitle date={date} />
-      <EventList items={filterData} />
+      <EventList items={props.filterData} />
     </div>
   );
 }
 export default FilteredEventsPage;
+
+export const getServerSideProps = async (context) => {
+  const { params } = context;
+  const [year, month] = params.slug;
+  if (
+    isNaN(year) ||
+    isNaN(month) ||
+    year > 2023 ||
+    year < 2021 ||
+    month < 1 ||
+    month > 12
+  ) {
+    return {
+      props: { hasError: true },
+    };
+  }
+  const filterData = await getFilteredEvents({ year, month });
+  if (!filterData || filterData.length === 0) {
+    return {
+      props: { notData: true },
+    };
+  }
+
+  return {
+    props: { filterData: filterData, year: year, month: month },
+  };
+};
